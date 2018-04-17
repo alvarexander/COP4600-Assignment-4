@@ -114,8 +114,11 @@ static ssize_t dev_write(struct file *filp, const char *buff, size_t length, lof
 {
 	int i;
 
-
-
+	char *ret;
+	ret = strstr(buff,"UCF");
+	
+	printk(KERN_INFO "strstr returns:%s\n",ret);
+	
 	if((size_of_message + length) > BUFF_LEN)
 	{
 		for(i = 0; i < (BUFF_LEN - size_of_message); i++)
@@ -123,9 +126,8 @@ static ssize_t dev_write(struct file *filp, const char *buff, size_t length, lof
 
 		msgptr = msg;
 
-		
-
 		size_of_message = BUFF_LEN;
+		
 		if(i > 1)
 		{
 			printk(KERN_INFO "Input: System has obtained %d characters from user, 0 bytes are available\n", i);
