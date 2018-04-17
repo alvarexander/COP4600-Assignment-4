@@ -23,8 +23,8 @@ static int 		counter = 0;
 int	size_of_message = 0;
 static struct 	class* charClass = NULL;
 static struct 	device* charDevice = NULL;
+static char replacement[40] = "Undefeated 2018 National Champions UCF";
 static DEFINE_MUTEX(charMutex);
-
 static int 		dev_open(struct inode *, struct file *);
 static int 		dev_release(struct inode *, struct file *);
 
@@ -112,12 +112,45 @@ static int dev_open(struct inode *inode, struct file *file)
 //called when a process writes to dev file: echo "hi"
 static ssize_t dev_write(struct file *filp, const char *buff, size_t length, loff_t * off)
 {
-	int i;
+	int i, indexFlag, j = 0, x = 0, compare;
+	char tempArray[1024];
+	char UCFarray[4];
 
 	char *ret;
+
+	// strstr will tell if UCF is a substring of buff allowing us to know -	
+	// whether or not changes need to be made to buff
 	ret = strstr(buff,"UCF");
 	
-	printk(KERN_INFO "strstr returns:%s\n",ret);
+	// if UCF is not in buff this will return null
+/*
+	if( ret != NULL)	
+	{
+		// printing the substring containing "UCF" for testing
+		printk(KERN_INFO "strstr returns:%s\n",ret);
+
+		// read in 3 characters at a time and check to see if it's equal to "UCF"
+		// we plan to store the index in order to write to the buffer at the right 
+		// index and keep track of where we left off
+		while(j < length - 3)
+		{
+			for(i = j; i < j+3; i++)
+			{
+				UCFarray[x++] = buff[i]; 
+	
+				
+			}
+				UCFarray[x+1] = '\0';
+
+			compare = strcmp("UCF",UCFarray);
+
+		printk(KERN_INFO "strcmp returns:%d\n",compare);
+			j++;	
+			x = 0;
+		}
+		
+	}
+/*
 	
 	if((size_of_message + length) > BUFF_LEN)
 	{
