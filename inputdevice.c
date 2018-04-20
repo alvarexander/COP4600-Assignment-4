@@ -110,46 +110,66 @@ static int dev_open(struct inode *inode, struct file *file)
 
 
 //called when a process writes to dev file: echo "hi"
-static ssize_t dev_write(struct file *filp, const char *buff, size_t length, loff_t * off)
+static ssize_t dev_write(struct file *filp, const char *buffer, size_t length, loff_t * off)
 {
-	int i;
+	int bytes, oldLength = size_of_message, bufLength, bufStart = 0;
+	const char *bufRep = buffer;
+	const char phrase[] = "Undefeated 2018 National Champions UCF";
 
-
-
-	if((size_of_message + length) > BUFF_LEN)
+	while(1)
 	{
-		for(i = 0; i < (BUFF_LEN - size_of_message); i++)
-			msg[i + size_of_message] = buff[i];
+		bufRep = strstr(bufRep, "UCF");
 
-		msgptr = msg;
-
-		
-
-		size_of_message = BUFF_LEN;
-		if(i > 1)
+		if(bufRep != NULL)
 		{
-			printk(KERN_INFO "Input: System has obtained %d characters from user, 0 bytes are available\n", i);
-			//mutex_unlock(&charMutex);
-			return i;
+			bufLength = bufRep - (buffer + bufStart);
+			bytes = copy_from_user(msg + size_of_message, buffer + bufStart, bufLength);
+
+			if(bytes != 0)
+			{
+				size_of_message = BUFF_LEN;
+				printk(KERN_INFO "Input: System has obtained %d characters from user, 0 bytes are available\n", size_of_message - oldLength);
+				msgptr = msg;
+				return -EFAULT;
+			}
+
+			size_of_message += bufLength;
+
+			for(bufLength = 0; bufLength < (BUFF_LEN - size_of_message) && bufLength < strlen(phrase); bufLength++)
+				msg[size_of_message + bufLength] = phrase[bufLength];
+
+			if(bufLength != strlen(phrase))
+			{
+				size_of_message = BUFF_LEN;
+				printk(KERN_INFO "Input: System has obtained %d characters from user, 0 bytes are available\n", size_of_message - oldLength);
+				msgptr = msg;
+				return -EFAULT;
+			}
+
+			size_of_message += bufLength;
+			bufRep += 3;
+			bufStart = bufRep - buffer;
 		}
 		else
 		{
-			return -EFAULT;
+			bufLength = length - bufStart;
+			bytes = copy_from_user(msg + size_of_message, buffer + bufStart, bufLength);
+
+			if(bytes == 0)
+			{
+				size_of_message += bufLength;
+				printk(KERN_INFO "Input: System has obtained %d characters from user, %d bytes are available\n", size_of_message - oldLength, BUFF_LEN - size_of_message);
+				msgptr = msg;
+				return 0;
+			}
+			else
+			{
+				size_of_message = BUFF_LEN;
+				printk(KERN_INFO "Input: System has obtained %d characters from user, 0 bytes are available\n", size_of_message - oldLength);
+				msgptr = msg;
+				return -EFAULT;
+			}
 		}
-	}
-	else
-	{
-		if(strlen(msg) < 1)
-			sprintf(msg, "%s", buff);
-		else
-			sprintf(msg, "%s%s", msg, buff);
-		
-		
-		size_of_message += length;
-		printk(KERN_INFO "Input: System has obtained %d characters from user, %d bytes are available\n", length, BUFF_LEN - size_of_message);
-		//mutex_unlock(&charMutex);
-		msgptr = msg;
-		return length;
 	}
 }
 
