@@ -112,7 +112,7 @@ static int dev_open(struct inode *inode, struct file *file)
 //called when a process writes to dev file: echo "hi"
 static ssize_t dev_write(struct file *filp, const char *buffer, size_t length, loff_t * off)
 {
-	int bytes, oldLength = size_of_message, strLength, strStart = 0;
+	int oldLength = size_of_message, strLength, strStart = 0;
 	const char *strPtr = buffer;
 	const char phrase[] = "Undefeated 2018 National Champions UCF";
 
@@ -122,21 +122,23 @@ static ssize_t dev_write(struct file *filp, const char *buffer, size_t length, l
 	{
 		// Sets the string length as the pointer position subtracted by the string start index
 		strLength = strPtr - (buffer + strStart);
-		bytes = copy_from_user(msg + size_of_message, buffer + strStart, strLength);
 
-		// If copy_to_user doesn't return 0, then the buffer is maxed out
-		if(bytes != 0)
+		// If the length of the string being added to the buffer is greater than the buffer length, then the buffer is maxed out
+		if(size_of_message + strLength > BUFF_LEN)
 		{
+			copy_from_user(msg + size_of_message, buffer + strStart, BUFF_LEN - size_of_message);
 			size_of_message = BUFF_LEN;
 			printk(KERN_INFO "Input: System has obtained %d characters from user, 0 bytes are available\n", size_of_message - oldLength);
 			msgptr = msg;
 			return -EFAULT;
 		}
 
+		// Concatinates the string before the substring of "UCF" to the buffer
 		// Adds the length of the new string added to the buffer length
+		copy_from_user(msg + size_of_message, buffer + strStart, strLength);
 		size_of_message += strLength;
 
-		// Loops concatinates the replacement phrase to the buffer
+		// Loop concatinates the replacement phrase to the buffer
 		for(strLength = 0; strLength < (BUFF_LEN - size_of_message) && strLength < strlen(phrase); strLength++)
 			msg[size_of_message + strLength] = phrase[strLength];
 
@@ -159,23 +161,23 @@ static ssize_t dev_write(struct file *filp, const char *buffer, size_t length, l
 
 	// String length is set as the number of remaining characters after the last occurrence of "UCF"
 	strLength = length - strStart;
-	bytes = copy_from_user(msg + size_of_message, buffer + strStart, strLength);
 
-	// If copy_to_user returns 0, then the buffer isn't maxed out
-	if(bytes == 0)
+	// If the length of the string being added to the buffer is greater than the buffer length, then the buffer is maxed out
+	if(size_of_message + strLength > BUFF_LEN)
 	{
-		size_of_message += strLength;
-		printk(KERN_INFO "Input: System has obtained %d characters from user, %d bytes are available\n", size_of_message - oldLength, BUFF_LEN - size_of_message);
-		msgptr = msg;
-		return 0;
-	}
-	else
-	{
+		copy_from_user(msg + size_of_message, buffer + strStart, BUFF_LEN - size_of_message);
 		size_of_message = BUFF_LEN;
 		printk(KERN_INFO "Input: System has obtained %d characters from user, 0 bytes are available\n", size_of_message - oldLength);
 		msgptr = msg;
 		return -EFAULT;
 	}
+
+	// Concatinates the remaining characters after the last substring to the buffer
+	copy_from_user(msg + size_of_message, buffer + strStart, strLength);
+	size_of_message += strLength;
+	printk(KERN_INFO "Input: System has obtained %d characters from user, %d bytes are available\n", size_of_message - oldLength, BUFF_LEN - size_of_message);
+	msgptr = msg;
+	return 0;
 }
 
 //called when a process closes the device file
