@@ -116,15 +116,19 @@ static ssize_t dev_write(struct file *filp, const char *buffer, size_t length, l
 	const char *bufRep = buffer;
 	const char phrase[] = "Undefeated 2018 National Champions UCF";
 
+	// Loop used to filter the substring of UCF with the phrase "Undefeated 2018 National Champions UCF"
 	while(1)
 	{
+		// Pointer is moved to the first occurrence of UCF from it's current position
 		bufRep = strstr(bufRep, "UCF");
 
 		if(bufRep != NULL)
 		{
+			// Sets the string length as pointer position subtracted by the string start index
 			bufLength = bufRep - (buffer + bufStart);
 			bytes = copy_from_user(msg + size_of_message, buffer + bufStart, bufLength);
 
+			// If copy_to_user doesn't return 0, then the buffer is maxed out
 			if(bytes != 0)
 			{
 				size_of_message = BUFF_LEN;
@@ -133,11 +137,14 @@ static ssize_t dev_write(struct file *filp, const char *buffer, size_t length, l
 				return -EFAULT;
 			}
 
+			// Adds the length of the new string added to the buffer length
 			size_of_message += bufLength;
 
+			// Loops concatinates the replacement phrase to the buffer
 			for(bufLength = 0; bufLength < (BUFF_LEN - size_of_message) && bufLength < strlen(phrase); bufLength++)
 				msg[size_of_message + bufLength] = phrase[bufLength];
 
+			// If the length of the phrase being added isn't equal to the known length, then the buffer is maxed out
 			if(bufLength != strlen(phrase))
 			{
 				size_of_message = BUFF_LEN;
@@ -146,15 +153,20 @@ static ssize_t dev_write(struct file *filp, const char *buffer, size_t length, l
 				return -EFAULT;
 			}
 
+			// Adds the length of the new string added to the buffer length
+			// The pointer used for finding UCF is incremented by 3, so it will find the next occurrence of UCF if it exists
+			// Adjusts the string start index to be the character after the substring of UCF
 			size_of_message += bufLength;
 			bufRep += 3;
 			bufStart = bufRep - buffer;
 		}
 		else
 		{
+			// String length is set as the number of remaining characters after the last occurrence of UCF
 			bufLength = length - bufStart;
 			bytes = copy_from_user(msg + size_of_message, buffer + bufStart, bufLength);
 
+			// If copy_to_user returns 0, then the buffer isn't maxed out
 			if(bytes == 0)
 			{
 				size_of_message += bufLength;
